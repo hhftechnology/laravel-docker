@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: laravel-ecommerce-app
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+            - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+        networks:
+            - laravel-network
+        depends_on:
+            - db
+            - redis
+
+    webserver:
+        image: nginx:alpine
+        container_name: laravel-ecommerce-webserver
+        restart: unless-stopped
+        ports:
+            - "8282:80"
+        volumes:
+            - ./:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        networks:
+            - laravel-network
+        depends_on:
+            - app
+
+    db:
+        image: mysql:8.0
+        container_name: laravel-ecommerce-db
+        restart: unless-stopped
+        ports:
+            - "3344:3306"
+        environment:
+            MYSQL_DATABASE: laravel_ecommerce
+            MYSQL_ROOT_PASSWORD: root_password
+            MYSQL_USER: laravel_user
+            MYSQL_PASSWORD: laravel_password
+        volumes:
+            - mysql_data:/var/lib/mysql
+        networks:
+            - laravel-network
+
+    redis:
+        image: redis:7-alpine
+        container_name: laravel-ecommerce-redis
+        restart: unless-stopped
+        ports:
+            - "8386:6379"
+        networks:
+            - laravel-network
+
+    mailhog:
+        image: mailhog/mailhog
+        container_name: laravel-ecommerce-mailhog
+        ports:
+            - "1234:1025"
+            - "8765:8025"
+        networks:
+            - laravel-network
+
+    # Add Adminer for database management
+    adminer:
+        image: adminer:latest
+        container_name: laravel-ecommerce-adminer
+        restart: unless-stopped
+        ports:
+            - "9192:8080"
+        environment:
+            ADMINER_DEFAULT_SERVER: db
+            ADMINER_DESIGN: pepa-linha-dark  # Optional: nice dark theme
+        networks:
+            - laravel-network
+        depends_on:
+            - db
+
+networks:
+    laravel-network:
+        driver: bridge
+
+volumes:
+    mysql_data:
